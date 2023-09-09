@@ -131,7 +131,7 @@ class Rename:
 				os.rename(file_path, os.path.join(root, new_file_name))
 		return self
 	
-	def add_prefix_or_suffix(self, prefix: str, suffix: str, separator: str):
+	def add_prefix_or_suffix(self, prefix: str = '', suffix: str = '', separator: str = ''):
 		"""
 		add prefix or suffix into filename
 		:param prefix: string of prefix
@@ -150,8 +150,15 @@ class Rename:
 		for index, filename in enumerate(filenames):
 			# 构造新文件名
 			filename_no_extension, extension = os.path.splitext(filename)
-			new_filename_no_extension = prefix + separator + filename_no_extension + separator + suffix
 			
+			if prefix != '' and suffix == '':
+				new_filename_no_extension = prefix + separator + filename_no_extension
+			elif prefix == '' and suffix != '':
+				new_filename_no_extension = filename_no_extension + separator + suffix
+			elif prefix != '' and suffix != '':
+				new_filename_no_extension = prefix + separator + filename_no_extension + separator + suffix
+			else:
+				raise TypeError('未指定前缀和后缀')
 			new_filename = new_filename_no_extension + extension
 			# 拼接路径和文件名
 			src = os.path.join(self.path, filename)
@@ -173,7 +180,7 @@ class Rename:
 		
 		# 遍历文件并重命名
 		for index, filename in enumerate(filenames):
-			src_path=os.path.join(self.path, filename)
+			src_path = os.path.join(self.path, filename)
 			if os.path.isfile(src_path):
 				# 构造新文件名
 				filename_no_extension, extension = os.path.splitext(filename)

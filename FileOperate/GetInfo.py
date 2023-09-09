@@ -18,17 +18,27 @@ class GetInfo:
 		else:
 			create_time = modify_time = None
 		
-		if create_time is not None:
-			create_time_formatted = datetime.utcfromtimestamp(create_time).strftime('%Y%m%d')
-			print(f'创建日期(YYMMDD): {create_time_formatted}')
-		else:
-			print('无法获取创建日期')
+		# if create_time is not None:
+		# 	create_time_formatted = datetime.utcfromtimestamp(create_time).strftime('%Y%m%d')
+		# 	print(f'创建日期(YYMMDD): {create_time_formatted}')
+		# else:
+		# 	print('无法获取创建日期')
+		#
+		# if modify_time is not None:
+		# 	modify_time_formatted = datetime.utcfromtimestamp(modify_time).strftime('%Y%m%d')
+		# 	print(f'修改日期(YYMMDD): {modify_time_formatted}')
+		# 	return modify_time_formatted
+		# else:
+		# 	print('无法获取修改日期')
 		
-		if modify_time is not None:
-			modify_time_formatted = datetime.utcfromtimestamp(modify_time).strftime('%Y%m%d')
-			print(f'修改日期(YYMMDD): {modify_time_formatted}')
+		if modify_time is not None and create_time is not None:
+			return datetime.utcfromtimestamp(min(modify_time, create_time)).strftime('%Y%m%d')
+		elif modify_time is not None:
+			return datetime.utcfromtimestamp(modify_time).strftime('%Y%m%d')
+		elif create_time is not None:
+			return datetime.utcfromtimestamp(create_time).strftime('%Y%m%d')
 		else:
-			print('无法获取修改日期')
+			raise ValueError(self.file_path + '：无法获取日期')
 	
 	def get_movie_date(self):
 		import subprocess
@@ -36,7 +46,7 @@ class GetInfo:
 		
 		if os.path.exists(self.file_path):
 			# 使用ffprobe获取视频文件信息，包括创建媒体日期
-			command = ['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'format_tags=creation_time', '-of', 'default=nw=1:nk=1', file_path]
+			command = ['ffprobe', '-v', 'error', '-show_entries', 'format_tags=creation_time', '-of', 'default=nw=1:nk=1', self.file_path]
 			result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 			
 			if result.returncode == 0:
@@ -44,11 +54,12 @@ class GetInfo:
 				output = result.stdout.strip()
 				if output:
 					create_time = output.strip()
-					print(f'创建媒体日期: {create_time}')
+					print(self.file_path + f'创建媒体日期: {create_time}')
+					return create_time
 				else:
-					print('无法获取创建媒体日期')
+					print(self.file_path + '：无法获取媒体创建日期')
 			else:
-				print('无法获取创建媒体日期')
+				print(self.file_path + '：无法获取媒体创建日期')
 		else:
 			print('文件不存在')
 	
@@ -71,8 +82,28 @@ class GetInfo:
 			return f"发生错误: {str(e)}"
 
 
-# 替换成你的图片文件路径
-file_path = r"E:\Source\Pictures\20221217 The Chaser\1 (2).jpg"
-getInfo = GetInfo(file_path)
-result = getInfo.get_image_creation_date()
-print(result)
+if __name__ == '__main__':
+	# 替换成你的图片文件路径
+	file_path = r"D:\Fenwick\Downloads\推特ティナ@muchi_tina"
+	for file in os.listdir(file_path):
+		file_full_path = os.path.join(file_path, file)
+		if os.path.isfile(file_full_path):
+			getInfo = GetInfo(file_full_path)
+			media_date = None
+			try:
+				media_date = getInfo.get_movie_date().split('T')[0].replace("-", "")
+			except Exception as e:
+				pass
+			file_date = getInfo.get_file_date()
+			if media_date is not None and file_date is not None:
+				try:
+					date = str(min(int(media_date), int(file_date)))
+				except:
+					raise ValueError(file_full_path + '：日期格式错误，无法转换为数字进行比较！')
+			elif media_date is not None:
+				date = media_date
+			elif file_date is not None:
+				date = file_date
+			new_name = date + " " + file
+			os.rename(file_full_path, os.path.join(file_path, new_name))
+	print("done!")
