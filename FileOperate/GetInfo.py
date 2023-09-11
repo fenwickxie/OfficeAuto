@@ -84,7 +84,7 @@ class GetInfo:
 
 if __name__ == '__main__':
 	# 替换成你的图片文件路径
-	file_path = r"D:\Fenwick\Downloads\推特ティナ@muchi_tina"
+	file_path = r"E:\Source\Films"
 	for file in os.listdir(file_path):
 		file_full_path = os.path.join(file_path, file)
 		if os.path.isfile(file_full_path):

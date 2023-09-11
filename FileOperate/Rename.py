@@ -195,3 +195,29 @@ class Rename:
 				# 重命名文件
 				os.rename(src_path, dst_path)
 		return self
+	
+	def replace_character(self, character_old: str, character_new):
+		"""
+		
+		:param character_old:
+		:return:
+		"""
+		# 列出目录下所有文件
+		filenames = os.listdir(self.path)
+		
+		# 按照文件名排序
+		filenames.sort(key=str.lower)
+		
+		# 遍历文件并重命名
+		for index, filename in enumerate(filenames):
+			src_path = os.path.join(self.path, filename)
+			if os.path.isfile(src_path):
+				# 构造新文件名
+				filename_no_extension, extension = os.path.splitext(filename)
+				if character_old is not None:
+					filename_no_character = filename_no_extension.replace(character_old, character_new) + extension.lower()
+				# 拼接路径和文件名
+				dst_path = os.path.join(self.path, filename_no_character)
+				# 重命名文件
+				os.rename(src_path, dst_path)
+		return self
