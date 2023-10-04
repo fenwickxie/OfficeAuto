@@ -82,28 +82,40 @@ class GetInfo:
 			return f"发生错误: {str(e)}"
 
 
+def get_date(file_full_path):
+	getInfo = GetInfo(file_full_path)
+	media_date = None
+	try:
+		media_date = getInfo.get_movie_date().split('T')[0].replace("-", "")
+	except Exception as e:
+		pass
+	file_date = getInfo.get_file_date()
+	if media_date is not None and file_date is not None:
+		try:
+			date = str(min(int(media_date), int(file_date)))
+		except:
+			raise ValueError(file_full_path + '：日期格式错误，无法转换为数字进行比较！')
+	elif media_date is not None:
+		date = media_date
+	elif file_date is not None:
+		date = file_date
+	return date
+
+
 if __name__ == '__main__':
 	# 替换成你的图片文件路径
-	file_path = r"E:\Source\Films"
-	for file in os.listdir(file_path):
-		file_full_path = os.path.join(file_path, file)
+	dir_path = r"E:\Source\Films"
+	dirs = os.listdir(dir_path)
+	dirs.sort(key=str.lower)
+	for dir in dirs:
+		dir_full_path = os.path.join(dir_path, dir)
+		medias = os.listdir(dir_full_path)
+		file_full_path = os.path.join(dir_full_path, medias[0])
 		if os.path.isfile(file_full_path):
-			getInfo = GetInfo(file_full_path)
-			media_date = None
-			try:
-				media_date = getInfo.get_movie_date().split('T')[0].replace("-", "")
-			except Exception as e:
-				pass
-			file_date = getInfo.get_file_date()
-			if media_date is not None and file_date is not None:
-				try:
-					date = str(min(int(media_date), int(file_date)))
-				except:
-					raise ValueError(file_full_path + '：日期格式错误，无法转换为数字进行比较！')
-			elif media_date is not None:
-				date = media_date
-			elif file_date is not None:
-				date = file_date
-			new_name = date + " " + file
-			os.rename(file_full_path, os.path.join(file_path, new_name))
+			# date = get_date(file_full_path)
+			
+			# new_name = dir.replace(' - ', ' ')
+			new_name = dir[0:13] + ' ' + dir[13:]
+			# new_name = '麻酥酥哟 ' + date + ' ' + dir
+			os.rename(dir_full_path, os.path.join(dir_path, new_name))
 	print("done!")
