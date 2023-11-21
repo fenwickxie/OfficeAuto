@@ -104,18 +104,25 @@ def get_date(file_full_path):
 
 if __name__ == '__main__':
 	# 替换成你的图片文件路径
-	dir_path = r"D:\ProgramData\Temp\fuwa"
+	dir_path = r"E:\Source\Films\[萌白酱][一口幼桃][甜味弥漫]\一口幼桃（萌白酱，甜味弥漫）\复出后部分"
 	dirs = os.listdir(dir_path)
 	dirs.sort(key=str.lower)
 	for dir in dirs:
 		dir_full_path = os.path.join(dir_path, dir)
-		# medias = os.listdir(dir_full_path)
-		# file_full_path = os.path.join(dir_full_path, medias[0])
-		if os.path.isfile(dir_full_path):
+		if os.path.isdir(dir_full_path):
+			medias = os.listdir(dir_full_path)
+			file_full_path = os.path.join(dir_full_path, medias[0])
+			if os.path.isfile(file_full_path):
+				date = get_date(file_full_path)
+				
+				# new_name = dir.replace(' - ', ' ')
+				# new_name = dir[0:13] + ' ' + dir[13:]
+				new_name = date + ' ' + dir
+				os.rename(dir_full_path, os.path.join(dir_path, new_name))
+		elif os.path.isfile(dir_full_path):
 			date = get_date(dir_full_path)
-			
 			# new_name = dir.replace(' - ', ' ')
 			# new_name = dir[0:13] + ' ' + dir[13:]
-			new_name = '[伏娲] ' + date + ' ' + dir
+			new_name = date + ' ' + dir
 			os.rename(dir_full_path, os.path.join(dir_path, new_name))
 	print("done!")

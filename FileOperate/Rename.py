@@ -196,9 +196,10 @@ class Rename:
 				os.rename(src_path, dst_path)
 		return self
 	
-	def replace_character(self, character_old: str, character_new):
+	def replace_character(self, character_old: str, character_new, include_dir: bool = False):
 		"""
-		
+		:param character_new:
+		:param include_dir:
 		:param character_old:
 		:return:
 		"""
@@ -215,9 +216,16 @@ class Rename:
 				# 构造新文件名
 				filename_no_extension, extension = os.path.splitext(filename)
 				if character_old is not None:
-					filename_no_character = filename_no_extension.replace(character_old, character_new) + extension.lower()
+					filename_replaced = filename_no_extension.replace(character_old, character_new) + extension.lower()
 				# 拼接路径和文件名
-				dst_path = os.path.join(self.path, filename_no_character)
+				dst_path = os.path.join(self.path, filename_replaced)
 				# 重命名文件
+				os.rename(src_path, dst_path)
+			elif include_dir:
+				if character_old is not None:
+					filename_replaced = filename.replace(character_old, character_new)
+				# 拼接路径和文件夹名
+				dst_path = os.path.join(self.path, filename_replaced)
+				# 重命名文件夹
 				os.rename(src_path, dst_path)
 		return self
