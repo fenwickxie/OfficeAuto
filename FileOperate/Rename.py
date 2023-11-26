@@ -38,8 +38,9 @@ class Rename:
 				os.rename(src, dst)
 	
 	@calculate_time
-	def rename_by_num(self, num_loc: int = 0, fill_char: str = '0', length: int = 3):
+	def rename_by_num(self, num_loc: int = 0, fill_char: str = '0', start: int = 0, length: int = 3):
 		"""
+		:param start: start of name
 		:param num_loc: 根据字符串中的第几组连续数字进行排序，default 0
 		:param fill_char: char of filling before filename，default ‘0’
 		:param length: length of filename，default 3
@@ -47,14 +48,16 @@ class Rename:
 		"""
 		# 列出目录下所有文件
 		filenames = os.listdir(self.path)
-		
+		filenames = [file for file in filenames if os.path.isfile(os.path.join(self.path,file))]
 		# 按照文件名中的数字排序
-		filenames.sort(key=lambda l: int(re.findall('\d+', l)[num_loc]))  # 找出字符串中的第一组连续数字并依据其整形进行排序
-		
+		try:
+			filenames.sort(key=lambda l: int(re.findall('\d+', l)[num_loc]))  # 找出字符串中的第一组连续数字并依据其整形进行排序
+		except Exception as e:
+			print(e)
 		# 遍历文件并重命名
 		for index, filename in enumerate(filenames):
 			# 构造新文件名
-			new_filename_no_extension = "{:{fill_char}>{length}}".format(index + 1, fill_char=fill_char, length=length)
+			new_filename_no_extension = "{:{fill_char}>{length}}".format(index + start, fill_char=fill_char, length=length)
 			extension = filename.split('.')[-1].lower()
 			new_filename = '{}.{}'.format(new_filename_no_extension, extension)
 			# 拼接路径和文件名
