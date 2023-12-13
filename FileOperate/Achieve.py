@@ -18,6 +18,35 @@ def get_name_and_path(url):
 	return name, parent_directory_path
 
 
+def divide_array_into_groups(arr, num_groups):
+	# 检查分组数量是否合理
+	if num_groups <= 0:
+		return "Number of groups should be greater than 0."
+	
+	# 计算每个分组的基本大小和余数
+	arr_size = len(arr)
+	group_size, remainder = divmod(arr_size, num_groups)
+	
+	# 初始化结果列表和起始索引
+	result = []
+	start = 0
+	
+	# 遍历分组数量
+	for _ in range(num_groups):
+		# 计算当前分组的结束索引，考虑余数
+		end = start + group_size + (1 if remainder > 0 else 0)
+		
+		# 将当前分组添加到结果列表
+		result.append(arr[start:end])
+		
+		# 更新起始索引和余数
+		start = end
+		remainder -= 1
+	
+	# 返回分组后的结果列表
+	return result
+
+
 def extract_files(folder_path, max_concurrent_files):
 	file_names = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.zip')]
 	
@@ -101,7 +130,8 @@ def winrar_compress(input_urls_batch: list, dict_size=64, delete_cmd_str: str = 
 		_output_url = '"' + os.path.join(parent_path, name_without_extension + '.rar') + '"'
 		_input_url = '"' + input_url + '"'
 		
-		cmd_rar = rf'.\Rar.exe a{delete_cmd_str} -ep -hp{password} -md{dict_size} {_output_url} {_input_url}'
+		cmd_rar = rf'.\Rar.exe a{delete_cmd_str} -idq -ep -hp{password} -md{dict_size} {_output_url} {_input_url}'
+		# -idq 禁止打印rar版本信息
 		# -ep 参数来指定不保存文件的父目录，-ep 参数必须放在 rar 命令行最前面
 		
 		os.chdir(rar)  # RaR切换工作目录
@@ -113,19 +143,25 @@ def winrar_compress(input_urls_batch: list, dict_size=64, delete_cmd_str: str = 
 
 
 @calculate_time
-def multithread_winrar_compress(folder_path, max_concurrent_files, dict_size: int = 64, delete_flag: int = 0):
+def multithread_winrar_compress(folder_path, threads_num, dict_size: int = 64, delete_flag: int = 0):
 	"""
+	多线程压缩文件
 	:param folder_path: 需要压缩的批量文件/文件夹名
-	:param max_concurrent_files: 每个线程处理的文件数
+	:param threads_num: 线程数
 	:param dict_size: 压缩字典大小
 	:param delete_flag: 0,保留原文件; 1,删除原文件到回收站; 2,彻底删除源文件
 	:return:
 	"""
 	# 获取子目录和文件
-	dir_list = [os.path.join(folder_path, dir_name) for dir_name in os.listdir(folder_path)]
+	urls_list = [
+		os.path.join(folder_path, file_name)
+		for file_name in os.listdir(folder_path)
+		if os.path.splitext(file_name)[-1].lower() not in COMPRESSED_EXTENSIONS
+	]
 	
 	threads = []
-	files_num = len(dir_list)
+	
+	urls_list_grouped = divide_array_into_groups(urls_list, threads_num)
 	
 	if delete_flag == 0:
 		delete_cmd_str = ''
@@ -136,15 +172,14 @@ def multithread_winrar_compress(folder_path, max_concurrent_files, dict_size: in
 	else:
 		raise SyntaxError('parameter type is error')
 	
-	for i in range(0, files_num, max_concurrent_files):
-		file_urls_batch = dir_list[i:min(files_num, i + max_concurrent_files)]
-		t = threading.Thread(target=winrar_compress, args=(file_urls_batch, dict_size, delete_cmd_str,))
+	for i in range(threads_num):
+		t = threading.Thread(target=winrar_compress, args=(urls_list_grouped[i], dict_size, delete_cmd_str,))
 		threads.append(t)
 	for thread in threads:
 		thread.start()
 	for thread in threads:
 		thread.join()
-	print('All files compressed successfully.')
+	print('All Done!')
 
 
 def winrar_uncompress(input_urls_batch, output_url=None, unrar=r'D:/Program Files/WinRAR'):
@@ -166,7 +201,7 @@ def winrar_uncompress(input_urls_batch, output_url=None, unrar=r'D:/Program File
 		else:
 			_output_url = '"' + os.path.join(output_url, name_without_extension) + '\\"'
 		
-		cmd_unrar = rf'.\UnRAR.exe x -p{password} {_input_url} {_output_url}'
+		cmd_unrar = rf'.\UnRAR.exe x -idq -p{password} {_input_url} {_output_url}'
 		'''
 		因为使用CMD（Command Prompt）执行程序不能在程序全路径外直接加
 		'''
@@ -179,29 +214,30 @@ def winrar_uncompress(input_urls_batch, output_url=None, unrar=r'D:/Program File
 			print('FAILED unCompress', input_url)
 
 
-def multithread_winrar_uncompress(folder_path, max_concurrent_files, output_url=None, unrar=r'D:/Program Files/WinRAR'):
+def multithread_winrar_uncompress(folder_path, threads_num, output_path=None, unrar_path=r'D:/Program Files/WinRAR'):
 	'''
 	:param folder_path: path of achieve files
-	:param max_concurrent_files: files num of every thread
-	:param unrar:
-	:param output_url:
+	:param threads_num: threads num
+	:param output_path: path to uncompress
+	:param unrar_path: path of unrar.exe
 	:return: none
 	'''
 	# 获取子目录和文件
-	dir_list = [
+	urls_list = [
 		os.path.join(folder_path, file_name)
 		for file_name in os.listdir(folder_path)
 		if os.path.splitext(file_name)[-1].lower() in COMPRESSED_EXTENSIONS
 	]
 	
 	threads = []
-	files_num = len(dir_list)
-	for i in range(0, files_num, max_concurrent_files):
-		file_urls_batch = dir_list[i:min(files_num, i + max_concurrent_files)]
-		t = threading.Thread(target=winrar_uncompress, args=(file_urls_batch, output_url, unrar))
+	
+	urls_list_grouped = divide_array_into_groups(urls_list, threads_num)
+	
+	for i in range(threads_num):
+		t = threading.Thread(target=winrar_uncompress, args=(urls_list_grouped[i], output_path, unrar_path))
 		threads.append(t)
 	for thread in threads:
 		thread.start()
 	for thread in threads:
 		thread.join()
-	print('All files compressed successfully.')
+	print('All Done!')
