@@ -4,6 +4,8 @@ import threading
 import zipfile
 from tools.PerformanceEval import calculate_time
 
+COMPRESSED_EXTENSIONS = {'.rar', '.zip', '.tar'}
+
 
 def get_name_and_path(url):
 	url = os.path.normpath(url)
@@ -177,15 +179,26 @@ def winrar_uncompress(input_urls_batch, output_url=None, unrar=r'D:/Program File
 			print('FAILED unCompress', input_url)
 
 
-def multithread_winrar_uncompress(folder_path, max_concurrent_files):
+def multithread_winrar_uncompress(folder_path, max_concurrent_files, output_url=None, unrar=r'D:/Program Files/WinRAR'):
+	'''
+	:param folder_path: path of achieve files
+	:param max_concurrent_files: files num of every thread
+	:param unrar:
+	:param output_url:
+	:return: none
+	'''
 	# 获取子目录和文件
-	dir_list = [os.path.join(folder_path, dir_name) for dir_name in os.listdir(folder_path)]
+	dir_list = [
+		os.path.join(folder_path, file_name)
+		for file_name in os.listdir(folder_path)
+		if os.path.splitext(file_name)[-1].lower() in COMPRESSED_EXTENSIONS
+	]
 	
 	threads = []
 	files_num = len(dir_list)
 	for i in range(0, files_num, max_concurrent_files):
 		file_urls_batch = dir_list[i:min(files_num, i + max_concurrent_files)]
-		t = threading.Thread(target=winrar_uncompress, args=(file_urls_batch,))
+		t = threading.Thread(target=winrar_uncompress, args=(file_urls_batch, output_url, unrar))
 		threads.append(t)
 	for thread in threads:
 		thread.start()

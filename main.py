@@ -10,14 +10,14 @@ if __name__ == '__main__':
 		path = r"D:\Fenwick\Downloads"
 		# path = os.path.join(base_path, dir)
 		if os.path.isdir(path):
-			rename = Rename(path)
+			# rename = Rename(path)
 			# DropDuplicates.remove_duplicates(path, 1, 1)
 			# # pre = os.path.basename(path)+'_'
 			# rename.rename_by_sort(1, prefix='', fill_char='0', length=3)
-			rename.rename_by_num(1, '0', 1, 3)
-
-		# rename.add_prefix_or_suffix('20', '', '')
-		# rename.replace_character(')','')
-		# multithread_winrar_compress(path, 1, 64, 0)
-		# multithread_winrar_uncompress(path,1)
-		# rename.change_extension('.rar')
+			# rename.rename_by_num(1, '0', 1, 3)
+			# rename.add_prefix_or_suffix('20', '', '')
+			# rename.replace_character(')','')
+			# rename.change_extension('.7z')
+			
+			# multithread_winrar_compress(path, 1, 64, 0)
+			multithread_winrar_uncompress(path,2)
