@@ -104,7 +104,7 @@ def get_date(file_full_path):
 
 if __name__ == '__main__':
 	# 替换成你的图片文件路径
-	dir_path = r"D:\Fenwick\Downloads"
+	dir_path = r"D:\Fenwick\Downloads\[揺り蓋]"
 	dirs = os.listdir(dir_path)
 	dirs.sort(key=str.lower)
 	for dir in dirs:
