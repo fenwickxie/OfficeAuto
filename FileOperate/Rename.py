@@ -1,6 +1,9 @@
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
+
 from tools import calculate_time
+from tools import get_all_files_base
 
 
 class Rename:
@@ -10,23 +13,24 @@ class Rename:
 		"""
 		self.path = path
 	
-	def rename_by_sort(self, start: int, prefix: str = '', fill_char: str = '0', length: int = 3):
+	def rename_by_sort(self, start: int, prefix: str = '', fill_char: str = '0', length: int = 3, include_subdirs: bool = False):
 		"""
 		:param start: start of the name
 		:param prefix: char of prefix
 		:param fill_char: char of filling before filename，default ‘0’
 		:param length: length of filename，default 3
+		:param include_subdirs: whether to include subdirectories, default False
 		:return: None
 		"""
 		# 列出目录下所有文件
-		filenames = os.listdir(self.path)
+		files_full_path, filenames = get_all_files_base(self.path, include_subdirs)
 		
 		# 按照文件名排序
 		filenames.sort(key=str.lower)
 		
 		# 遍历文件并重命名
 		for index, filename in enumerate(filenames):
-			if os.path.isfile(os.path.join(self.path, filename)):
+			if os.path.isfile(files_full_path[index]):
 				# 构造新文件名
 				new_filename_no_extension = prefix + "{:{fill_char}>{length}}".format(start + index, fill_char=fill_char, length=length)
 				extension = filename.split('.')[-1].lower()
@@ -37,6 +41,63 @@ class Rename:
 				# 重命名文件
 				os.rename(src, dst)
 	
+	def sort_and_rename_files_in_directory(self, include_subdirs=True, index_length=3, suffix=''):
+		for root, dirs, files in os.walk(self.path):
+			# 是否包括子目录
+			if not include_subdirs and root != self.path:
+				continue
+			
+			# 获取当前目录下的所有文件路径
+			all_files = [os.path.join(root, f) for f in files if os.path.isfile(os.path.join(root, f))]
+			
+			# 根据文件名的小写形式进行排序
+			sorted_files = sorted(all_files, key=lambda x: os.path.basename(x).lower())
+			# 获取当前目录的字符串
+			current_dir_str = os.path.basename(root)
+			# 遍历排序后的文件列表，并按照顺序对文件进行重命名
+			for index, file_path in enumerate(sorted_files, start=1):
+				file_name = os.path.basename(file_path)
+				file_extension = os.path.splitext(file_name)[1]  # 获取文件扩展名
+				new_file_name = f"{current_dir_str}_{index:0{index_length}d}{suffix}.{file_extension}"  # 新文件名格式，例如：directory_001_filename_suffix.txt
+				new_file_path = os.path.join(root, new_file_name)
+				
+				# 重命名文件
+				os.rename(file_path, new_file_path)
+				print(f"Renamed: {file_path} -> {new_file_path}")
+	
+	def sort_and_rename_files_in_allpath(self, file_paths, index_length=3, suffix=''):
+		# 遍历每个子目录
+		for directory in set(os.path.dirname(file_path) for file_path in file_paths):
+			# 获取当前子目录下的所有文件路径
+			files_in_directory = [file_path for file_path in file_paths if os.path.dirname(file_path) == directory]
+			
+			# 根据文件名的小写形式进行排序
+			sorted_files = sorted(files_in_directory, key=lambda x: os.path.basename(x).lower())
+			# 获取当前目录的字符串
+			current_dir_str = os.path.basename(directory)
+			# 遍历排序后的文件列表，并按照顺序对文件进行重命名
+			for index, file_path in enumerate(sorted_files, start=1):
+				file_name = os.path.basename(file_path)
+				file_extension = os.path.splitext(file_name)[-1]  # 获取文件扩展名
+				new_file_name = f"{current_dir_str}_{index:0{index_length}d}{suffix}.{file_extension}"  # 新文件名格式，例如：directory_001_filename_suffix.txt
+				new_file_path = os.path.join(os.path.dirname(file_path), new_file_name)
+				
+				# 重命名文件
+				os.rename(file_path, new_file_path)
+				print(f"Renamed: {file_path} -> {new_file_path}")
+	
+	def sort_and_rename_files(self, *args, index_length=3, suffix=''):
+		# 如果传入的参数中包含文件路径列表
+		if isinstance(args[0], list):
+			file_paths = args[0]
+			self.sort_and_rename_files_in_directory(file_paths, index_length, suffix)
+		elif isinstance(args[0], str):
+			# 否则，使用默认行为获取当前目录下所有文件路径
+			directory = args[0] if len(args) > 0 else "."
+			file_paths, filenames = get_all_files_base(directory,True)
+			self.sort_and_rename_files_in_allpath(file_paths, index_length, suffix)
+	
+
 	@calculate_time
 	def rename_by_num(self, num_loc: int = 0, fill_char: str = '0', start: int = 0, length: int = 3):
 		"""
@@ -48,7 +109,7 @@ class Rename:
 		"""
 		# 列出目录下所有文件
 		filenames = os.listdir(self.path)
-		filenames = [file for file in filenames if os.path.isfile(os.path.join(self.path,file))]
+		filenames = [file for file in filenames if os.path.isfile(os.path.join(self.path, file))]
 		# 按照文件名中的数字排序
 		try:
 			filenames.sort(key=lambda l: int(re.findall('\d+', l)[num_loc]))  # 找出字符串中的第一组连续数字并依据其整形进行排序

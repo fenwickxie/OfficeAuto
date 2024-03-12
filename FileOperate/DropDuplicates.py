@@ -4,9 +4,12 @@ import os
 import shutil
 
 import numpy as np
+from PIL import Image
 from numpy import linalg
-
+from concurrent.futures import ThreadPoolExecutor
 from tools import calculate_time
+from tools.OSTool import get_all_files_base
+from tools.StringTools import split_by_any_separator
 
 
 def movefile(srcfile, dst_dir):  # 移动函数
@@ -23,16 +26,15 @@ def movefile(srcfile, dst_dir):  # 移动函数
 
 def group_files_by_size(directory):
 	file_groups = {}
-	filenames = os.listdir(directory)
+	filenames = get_all_files_base(directory)
 	dir_num = 0
 	for filename in filenames:
-		path = os.path.join(directory, filename)
-		if os.path.isfile(path):
-			size = os.path.getsize(path)
+		if os.path.isfile(filename):
+			size = os.path.getsize(filename)
 			if size in file_groups:
-				file_groups[size].append(path)
+				file_groups[size].append(filename)
 			else:
-				file_groups[size] = [path]
+				file_groups[size] = [filename]
 		else:
 			dir_num += 1
 	print(f'去重前文件个数：{len(filenames) - dir_num}；去重前目录个数：{dir_num}')
@@ -95,3 +97,97 @@ def image_similarity_vectors(images):
 	# dot返回的是点积，对二维数组（矩阵）进行计算
 	res = np.dot(images_norms, images_norms.T)
 	return corr_coef, res
+
+
+def group_and_keep_largest(directory, flag: bool, separator=['_']):
+	"""
+    根据文件名中的前缀对文件进行分组，并保留每个分组中文件个数最多的文件。
+	:param directory:
+	:param flag: 是否保留源文件
+	:param separator:
+	:return:
+	"""
+	# 获取目录中所有文件
+	all_files = get_all_files_base(directory)
+	
+	# 根据指定的分隔符对文件名进行分组
+	grouped_files = {}
+	for file in all_files:
+		prefix = split_by_any_separator(file, separator)[0]
+		if prefix not in grouped_files:
+			grouped_files[prefix] = []
+		grouped_files[prefix].append(file)
+	
+	# 保留每组中最大的图片
+	for group, files in grouped_files.items():
+		max_file = max(files, key=lambda x: os.path.getsize(x))
+		
+		# 将每组中最大的图片保存为png格式
+		output_path = os.path.join(directory, f"{group}_remain.png")
+		Image.open(max_file).save(output_path, format='PNG')
+		print(f"Saved: {output_path}")
+		
+		if flag:
+			files.remove(max_file)
+		
+		for file in files:
+			os.remove(file)
+			print(f"Deleted: {file}")
+
+
+def process_group(directory: str, group_name: str, files: list, flag: bool):
+	"""
+	根据文件名中的前缀对文件进行分组，并保留每个分组中最大的文件。
+	:param directory:
+	:param group_name:
+	:param files:
+	:param flag:
+	:param separator:
+	:return:
+	"""
+	max_file = max(files, key=lambda x: os.path.getsize(x))
+	
+	output_path = os.path.join(directory, f"{group_name}_remain.png")
+	
+	try:
+		Image.open(max_file).save(output_path, format='PNG')
+		print(f"Saved: {output_path}")
+	except OSError as e:
+		print(f"Error processing {max_file}: {e}")
+		# 处理错误的代码，例如跳过该文件
+		pass
+	
+	if flag:
+		files.remove(max_file)
+	for file in files:
+		os.remove(file)
+		print(f"Deleted: {file}")
+
+
+def group_and_keep_largest_multithread(directory, flag: bool, separator=['_']):
+	all_files = get_all_files_base(directory, True)
+	
+	grouped_files = {}
+	for file in all_files:
+		prefix = split_by_any_separator(file, separator)[0]
+		if prefix not in grouped_files:
+			grouped_files[prefix] = []
+		grouped_files[prefix].append(file)
+	
+	with ThreadPoolExecutor() as executor:
+		futures = []
+		for group, files in grouped_files.items():
+			futures.append(executor.submit(process_group, directory, group, files, flag))
+		
+		# 等待所有任务完成
+		for future in futures:
+			future.result()
+
+
+if __name__ == '__main__':
+	# 指定目录路径和分隔符
+	directory_path = r"D:\Fenkx\Fenkx - General\AI\Dataset\BarCode\My Datasets\Test_Label_ALL_Original_Classified"
+	separator = ['_NG', '_OK']
+	
+	# 执行图片处理和删除操作
+	group_and_keep_largest_multithread(directory_path, False, separator)
